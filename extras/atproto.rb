@@ -45,6 +45,46 @@ class ATProto
       end
       raise KeyError, "DID document lacks a valid handle"
     end
+
+    def services
+      @document["service"].map do |service|
+        case service["type"]
+        when PersonalDataServer::TYPE
+          PersonalDataServer.new(service["id"], URI.parse(service["serviceEndpoint"]))
+        else
+          Service.new(service["type"], service["id"])
+        end
+      end
+    end
+
+    def pds
+      services.each do |service|
+        if service.is_a?(PersonalDataServer) && service.id.ends_with?("#atproto_pds")
+          return service
+        end
+      end
+      raise KeyError, "DID document lacks PDS locator"
+    end
+  end
+
+  class Service
+    attr_reader :type
+    attr_reader :id
+
+    def initialize(type, id)
+      @type = type
+      @id = id
+    end
+  end
+
+  class PersonalDataServer < Service
+    TYPE = "AtprotoPersonalDataServer"
+    attr_reader :endpoint
+
+    def initialize(id, endpoint)
+      super(TYPE, id)
+      @endpoint = endpoint
+    end
   end
 
   private
